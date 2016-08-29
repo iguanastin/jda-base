@@ -13,21 +13,21 @@ import net.dv8tion.jda.events.message.priv.PrivateMessageReceivedEvent;
 import net.dv8tion.jda.hooks.ListenerAdapter;
 
 /**
- * A simple Discord Bot framework with extremely minimal implementation. Intended to be used as a base to build on.
+ * A simple Discord Bot framework with minimal implementation. Intended to be used as a base to build on.
  * 
  * @author austinbt
  */
 public class DiscordBot extends ListenerAdapter {
 
     private static final String TOKEN = "ayylmao";
-    private static final String COMMAND = "!";
+    private static final char COMMAND = '!';
     private static final String SAVE_FILE = "server.data";
     private static final long SAVE_RATE = 60 * 1000;
     
     /**
      * The name of this bot
      */
-    public static final String BOT_NAME = "BOTTY";
+    public final String BOT_NAME = "BOTTY";
     
     private static final String JOIN_MESSAGE = "Ayy";
     private static final String HELP_MESSAGE = "**Help:**\n```Nothing to help with!```";
@@ -55,14 +55,14 @@ public class DiscordBot extends ListenerAdapter {
      * Initializes the database and database save timer for this bot
      */
     public DiscordBot() {
-        //Initialize database
+        //Initialize database from the given SAVE_FILE
         try {
             database = new ServerDatabase(SAVE_FILE);
         } catch (FileNotFoundException ex) {
             database = new ServerDatabase();
         }
         
-        //Initialize save timer
+        //Initialize save timer to save the database to SAVE_FILE at a fixed rate SAVE_RATE
         databaseSaver = new Timer();
         databaseSaver.scheduleAtFixedRate(new TimerTask() {
             @Override
@@ -72,9 +72,10 @@ public class DiscordBot extends ListenerAdapter {
         }, SAVE_RATE, SAVE_RATE);
     }
     
+    //This method is only called when a message is recieved that begins with the COMMAND char
     private void onCommandMessage(MessageReceivedEvent event) {
         //Cut off command identifier and split into command and arguments
-        String cmd = event.getMessage().getContent().substring(COMMAND.length()).toLowerCase();
+        String cmd = event.getMessage().getContent().substring(1).toLowerCase();
         String args = "";
         if (cmd.contains(" ")) {
             args = cmd.substring(cmd.indexOf(" ") + 1);
@@ -89,6 +90,7 @@ public class DiscordBot extends ListenerAdapter {
         }
     }
     
+    //This method is only called when a message is recieved and does not begin with the COMMAND char
     private void onNonCommandMessage(MessageReceivedEvent event) {
         
     }
@@ -100,7 +102,11 @@ public class DiscordBot extends ListenerAdapter {
      */
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
-        if (event.getMessage().getContent().startsWith(COMMAND)) {
+        //Ensure user is added to databsae
+        database.addGlobalUser(event.getAuthor());
+        
+        //Dispatch event to private methds
+        if (event.getMessage().getContent().charAt(0) == COMMAND) {
             onCommandMessage(event);
         } else {
             onNonCommandMessage(event);
@@ -118,7 +124,9 @@ public class DiscordBot extends ListenerAdapter {
     }
 
     /**
-     * Is called by the JDA when a Guild has added this bot to a Guild
+     * Is called by the JDA when this bot has been added to a Guild.
+     * 
+     * This event is only fired once per Guild, unless the guild kicks this bot and adds them again.
      * 
      * @param event
      */

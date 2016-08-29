@@ -9,7 +9,7 @@ import org.json.JSONObject;
  * 
  * ***TODO***
  * Create functionality to allow control of GuildUserData objects
- * ***END***
+ * ***TODO***
  * 
  * @author austinbt
  */

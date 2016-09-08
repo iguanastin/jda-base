@@ -239,9 +239,9 @@ public class ServerDatabase {
     }
 
     /**
-     * Clears this database
+     * Clears the contents this database
      */
-    private void clear() {
+    public void clear() {
         guildData.clear();
         globalUserData.clear();
     }

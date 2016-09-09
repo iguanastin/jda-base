@@ -1,6 +1,8 @@
 package discordbot;
 
+import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.Scanner;
 import java.util.Timer;
 import java.util.TimerTask;
 import javax.security.auth.login.LoginException;
@@ -11,6 +13,8 @@ import net.dv8tion.jda.events.guild.GuildLeaveEvent;
 import net.dv8tion.jda.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.events.message.priv.PrivateMessageReceivedEvent;
 import net.dv8tion.jda.hooks.ListenerAdapter;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 /**
  * A simple Discord Bot framework with minimal implementation. Intended to be used as a base to build on.
@@ -19,19 +23,21 @@ import net.dv8tion.jda.hooks.ListenerAdapter;
  */
 public class DiscordBot extends ListenerAdapter {
 
-    private static final String TOKEN = "ayylmao";
-    private static final char COMMAND = '!';
-    private static final String SAVE_FILE = "server.data";
-    private static final long SAVE_RATE = 60 * 1000;
+    private static final String BOT_CONFIG_FILE = "bot.cfg";
+    
+    private static String TOKEN = "INVALID";
+    private static char COMMAND = '!';
+    private static String DATABASE_SAVE_FILE = "bot.db";
+    private static long DATABASE_SAVE_RATE_SECONDS = 60;
     
     /**
      * The name of this bot
      */
-    public final String BOT_NAME = "BOTTY";
+    public static String BOT_NAME = "Default_Bot_Name";
     
-    private static final String JOIN_MESSAGE = "Ayy";
-    private static final String HELP_MESSAGE = "**Help:**\n```Nothing to help with!```";
-    private static final String INFO_MESSAGE = "**Info**\n```Info about bot goes here```";
+    private static String JOIN_MESSAGE = "Ayy";
+    private static String HELP_MESSAGE = "**Help:**\n```Nothing to help with!```";
+    private static String INFO_MESSAGE = "**Info**\n```Info about bot goes here```";
     
     private ServerDatabase database;
     private Timer databaseSaver;
@@ -52,12 +58,16 @@ public class DiscordBot extends ListenerAdapter {
     }
 
     /**
+     * Initializes bot configuration
+     * 
      * Initializes the database and database save timer for this bot
      */
     public DiscordBot() {
-        //Initialize database from the given SAVE_FILE
+        loadConfigFromFile();
+        
+        //Initialize databse
         try {
-            database = new ServerDatabase(SAVE_FILE);
+            database = new ServerDatabase(DATABASE_SAVE_FILE);
         } catch (FileNotFoundException ex) {
             database = new ServerDatabase();
         }
@@ -67,9 +77,81 @@ public class DiscordBot extends ListenerAdapter {
         databaseSaver.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                database.saveDatabase(SAVE_FILE);
+                saveDatabase();
             }
-        }, SAVE_RATE, SAVE_RATE);
+        }, DATABASE_SAVE_RATE_SECONDS * 1000, DATABASE_SAVE_RATE_SECONDS * 1000);
+    }
+
+    /**
+     * Loads bot configuration from JSON file
+     */
+    public void loadConfigFromFile() {
+        JSONObject json = getJSONFromFile(BOT_CONFIG_FILE);
+        
+        if (json.has("database_file")) {
+            DATABASE_SAVE_FILE = json.getString("database_file");
+        }
+        if (json.has("bot_name")) {
+            BOT_NAME = json.getString("bot_name");
+        }
+        if (json.has("bot_token")) {
+            TOKEN = json.getString("bot_token");
+        }
+        if (json.has("command_char")) {
+            COMMAND = json.getString("bot_command_char").charAt(0);
+        }
+        if (json.has("database_save_rate")) {
+            DATABASE_SAVE_RATE_SECONDS = json.getLong("database_save_rate");
+        }
+        if (json.has("join_guild_message")) {
+            JOIN_MESSAGE = json.getString("join_guild_message");
+        }
+        if (json.has("help_message")) {
+            HELP_MESSAGE = json.getString("help_message");
+        }
+        if (json.has("info_message")) {
+            INFO_MESSAGE = json.getString("info_message");
+        }
+    }
+
+    /**
+     * Attempt to load JSON from a file.
+     * 
+     * @param filepath Path of file to read
+     * @return JSON read from file if successful and file exists. Null if file does not exist, or file does not contain JSON
+     */
+    public static JSONObject getJSONFromFile(String filepath) {
+        
+        String jsonString = "";
+        
+        //Read from file into string
+        try {
+            Scanner scan = new Scanner(new File(filepath));
+            
+            while (scan.hasNextLine()) {
+                jsonString += scan.nextLine();
+            }
+            
+            scan.close();
+        } catch (FileNotFoundException ex) {
+            //Return if file does not exist
+            return null;
+        }
+        
+        //If file was read from, attempt to create JSON
+        try {
+            return new JSONObject(jsonString);
+        } catch (JSONException ex) {
+            //Return if string is not JSON
+            return null;
+        }
+    }
+
+    /**
+     * Saves the bot's database to file
+     */
+    private void saveDatabase() {
+        database.saveDatabase(DATABASE_SAVE_FILE);
     }
     
     //This method is only called when a message is recieved that begins with the COMMAND char
